@@ -1,2 +1,2 @@
 # SignalRDemo
-SignalR Demo Application with Jquery
+SignalR Demo Application with JQuery
