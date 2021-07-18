@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="signalr.min.js"></script>
+    <script src="jquery.min.js"></script>
+  </head>
+
+  <script>
+    $(document).ready(() => {
+      const connection = new signalR.HubConnectionBuilder()
+        .withUrl("https://localhost:5001/myhub")
+        .withAutomaticReconnect([
+          1000, 2000, 3000, 5000, 5000, 5000, 5000, 5000, 10000, 30000, 50000,
+        ])
+        .build();
+
+      async function start() {
+        try {
+          await connection.start();
+        } catch (error) {
+          setInterval(() => start(), 2000);
+        }
+      }
+
+      start();
+
+      function animation() {
+        state.css("color", "white");
+        state.fadeIn(2000, () => {
+          setTimeout(() => {
+            state.fadeOut(2000);
+          }, 2000);
+        });
+      }
+
+      const state = $("#state");
+
+      connection.onreconnecting((error) => {
+        state.css("background-color", "blue");
+        animation();
+        state.html("Bağlantı Kuruluyor");
+      });
+
+      connection.onreconnected((connectionId) => {
+        state.css("background-color", "green");
+        animation();
+        state.html("Bağlantı Kuruldu");
+      });
+
+      connection.onclose((connectionId) => {
+        state.css("background-color", "red");
+        animation();
+        state.html("Bağlantı Kurulamadı");
+      });
+
+      connection.on("userJoined", (connectionId) => {
+        state.css("background-color", "teal");
+        animation();
+        state.html(`${connectionId} Odaya Katıldı`);
+      });
+
+      connection.on("userLeaved", (connectionId) => {
+        state.css("background-color", "red");
+        animation();
+        state.html(`${connectionId} Odadan Ayrıldı`);
+      });
+
+      connection.on("clients", (clients) => {
+        let test = "";
+        clients.forEach((client) => {
+          test += `<li>${client}</li>`;
+          $("#clients").html(test);
+        });
+      });
+
+      $("#send").click(() => {
+        let message = $("#message").val();
+        if (message != "") {
+          connection
+            .invoke("SendMessageAsync", message)
+            .catch((error) => console.log(`Error :  ${error}`));
+        }
+      });
+
+      connection.on("receiveMessage", (message) => {
+        $("#messages").append(message + "<br />");
+      });
+    });
+  </script>
+  <body>
+    <div id="state" style="display: none"></div>
+
+    <input type="text" id="message" />
+    <button id="send">Gönder</button>
+
+    <div id="messages"></div>
+
+    <ul id="clients"></ul>
+  </body>
+</html>
